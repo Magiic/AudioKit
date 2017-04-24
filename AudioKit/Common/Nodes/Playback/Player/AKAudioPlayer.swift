@@ -11,7 +11,6 @@ open class AKAudioPlayer: AKNode, AKToggleable {
 
     // MARK: - Private variables
     fileprivate var internalAudioFile: AKAudioFile
-    fileprivate var internalPlayer = AVAudioPlayerNode()
     fileprivate var totalFrameCount: UInt32 = 0
     fileprivate var startingFrame: UInt32 = 0
     fileprivate var endingFrame: UInt32 = 0
@@ -24,6 +23,7 @@ open class AKAudioPlayer: AKNode, AKToggleable {
     fileprivate var scheduledStopAction: AKScheduledAction?
 
     // MARK: - Properties
+    open var internalPlayer = AVAudioPlayerNode()
     open dynamic var audioFileBuffer: AVAudioPCMBuffer?
 
     /// Will be triggered when AKAudioPlayer has finished to play.
