@@ -15,7 +15,7 @@ open class AKFMOscillator: AKNode, AKToggleable, AKComponent {
 
     // MARK: - Properties
 
-    public var internalAU: AKAudioUnitType?
+    private var internalAU: AKAudioUnitType?
     private var token: AUParameterObserverToken?
 
     fileprivate var waveform: AKTable?
@@ -109,7 +109,7 @@ open class AKFMOscillator: AKNode, AKToggleable, AKComponent {
     }
 
     /// Tells whether the node is processing (ie. started, playing, or active)
-    @objc open dynamic var isStarted: Bool {
+    open dynamic var isStarted: Bool {
         return internalAU?.isPlaying() ?? false
     }
 
@@ -159,7 +159,6 @@ open class AKFMOscillator: AKNode, AKToggleable, AKComponent {
         }
 
         guard let tree = internalAU?.parameterTree else {
-            AKLog("Parameter Tree Failed")
             return
         }
 
@@ -169,15 +168,20 @@ open class AKFMOscillator: AKNode, AKToggleable, AKComponent {
         modulationIndexParameter = tree["modulationIndex"]
         amplitudeParameter = tree["amplitude"]
 
-        token = tree.token(byAddingParameterObserver: { [weak self] _, _ in
+        token = tree.token (byAddingParameterObserver: { [weak self] address, value in
 
-            guard let _ = self else {
-                AKLog("Unable to create strong reference to self")
-                return
-            } // Replace _ with strongSelf if needed
             DispatchQueue.main.async {
-                // This node does not change its own values so we won't add any
-                // value observing, but if you need to, this is where that goes.
+                if address == self?.baseFrequencyParameter?.address {
+                    self?.baseFrequency = Double(value)
+                } else if address == self?.carrierMultiplierParameter?.address {
+                    self?.carrierMultiplier = Double(value)
+                } else if address == self?.modulatingMultiplierParameter?.address {
+                    self?.modulatingMultiplier = Double(value)
+                } else if address == self?.modulationIndexParameter?.address {
+                    self?.modulationIndex = Double(value)
+                } else if address == self?.amplitudeParameter?.address {
+                    self?.amplitude = Double(value)
+                }
             }
         })
         internalAU?.baseFrequency = Float(baseFrequency)
@@ -188,12 +192,12 @@ open class AKFMOscillator: AKNode, AKToggleable, AKComponent {
     }
 
     /// Function to start, play, or activate the node, all do the same thing
-    @objc open func start() {
+    open func start() {
         internalAU?.start()
     }
 
     /// Function to stop or bypass the node, both are equivalent
-    @objc open func stop() {
+    open func stop() {
         internalAU?.stop()
     }
 }

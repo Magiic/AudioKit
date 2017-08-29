@@ -204,6 +204,11 @@ extension AKSettings {
         if ❗️AKSettings.disableAVAudioSessionCategoryManagement {
             do {
                 try session.setCategory("\(category)", with: options)
+                if (category == .playAndRecord) {
+                    try session.setMode(AVAudioSessionModeMeasurement)
+                } else {
+                    try session.setMode(AVAudioSessionModeDefault)
+                }
             } catch let error as NSError {
                 AKLog("Error: \(error) Cannot set AVAudioSession Category to \(category) with options: \(options)")
                     throw error

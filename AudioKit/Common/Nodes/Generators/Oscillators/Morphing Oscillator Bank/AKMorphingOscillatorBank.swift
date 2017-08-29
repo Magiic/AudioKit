@@ -18,6 +18,8 @@ open class AKMorphingOscillatorBank: AKPolyphonicNode, AKComponent {
 
     private var internalAU: AKAudioUnitType?
     private var token: AUParameterObserverToken?
+    fileprivate let noteNumberKey = "noteNumber"
+    fileprivate var noteStoppers: [MIDINoteNumber:Timer] = [:]
 
     /// An array of tables to morph between
     open var waveformArray = [AKTable]() {
@@ -273,8 +275,26 @@ open class AKMorphingOscillatorBank: AKPolyphonicNode, AKComponent {
         internalAU?.startNote(noteNumber, velocity: velocity, frequency: Float(frequency))
     }
 
+    /// Function to start, play, or activate the node with time at which it will be automatically stopped
+    open func play(noteNumber: MIDINoteNumber, velocity: MIDIVelocity, stopAfter: Double) {
+        self.play(noteNumber: noteNumber, velocity: velocity)
+        noteStoppers[noteNumber]?.invalidate()
+        noteStoppers[noteNumber] = Timer.scheduledTimer(timeInterval: stopAfter,
+                                                        target: self,
+                                                        selector: #selector(stop(timer:)),
+                                                        userInfo: [noteNumberKey:noteNumber],
+                                                        repeats: false)
+    }
+
     /// Function to stop or bypass the node, both are equivalent
     open override func stop(noteNumber: MIDINoteNumber) {
         internalAU?.stopNote(noteNumber)
+    }
+
+    /// Function to stop or bypass the node via an internal timer
+    @objc func stop(timer: Timer) {
+        let noteInfo = timer.userInfo as! [String:MIDINoteNumber]
+        let note = noteInfo[noteNumberKey]!
+        internalAU?.stopNote(note)
     }
 }

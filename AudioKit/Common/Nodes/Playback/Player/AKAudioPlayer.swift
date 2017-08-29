@@ -295,6 +295,11 @@ open class AKAudioPlayer: AKNode, AKToggleable {
 
     open func play(at when: AVAudioTime?) {
 
+        // Attempt to fix Crashlytics #14007
+        if !AudioKit.engine.isRunning {
+            return
+        }
+
         if ❗️playing {
             if audioFileBuffer != nil {
                 // schedule it at some point in the future / or immediately if 0
