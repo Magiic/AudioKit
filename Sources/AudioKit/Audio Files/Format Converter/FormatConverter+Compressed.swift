@@ -88,15 +88,17 @@ extension FormatConverter {
 
             self.inputURL = tempFile
 
-            self.convertPCMToCompressed { error in
-                try? FileManager.default.removeItem(at: tempFile)
-                completionHandler?(error)
+            Task {
+                await self.convertPCMToCompressed { error in
+                    try? FileManager.default.removeItem(at: tempFile)
+                    completionHandler?(error)
+                }
             }
         }
     }
 
     /// The AVFoundation way. *This doesn't currently handle compressed input - only compressed output.*
-    func convertPCMToCompressed(completionHandler: FormatConverterCallback? = nil) {
+    func convertPCMToCompressed(completionHandler: FormatConverterCallback? = nil) async {
         guard let inputURL = inputURL else {
             completionHandler?(Self.createError(message: "Input file can't be nil."))
             return
@@ -220,12 +222,12 @@ extension FormatConverter {
         let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: outputSettings, sourceFormatHint: hint)
         writer.add(writerInput)
 
-        guard let track = asset.tracks(withMediaType: .audio).first else {
+        guard let track = try? await asset.loadTracks(withMediaType: .audio).first else {
             completionProxy(error: Self.createError(message: "No audio was found in the input file."),
                             completionHandler: completionHandler)
             return
         }
-
+        
         let readerOutput = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
         guard reader.canAdd(readerOutput) else {
             completionProxy(error: Self.createError(message: "Unable to add reader output."),
@@ -233,38 +235,38 @@ extension FormatConverter {
             return
         }
         reader.add(readerOutput)
-
+        
         if !writer.startWriting() {
             Log("Failed to start writing. Error:", writer.error?.localizedDescription)
             completionProxy(error: writer.error,
                             completionHandler: completionHandler)
             return
         }
-
+        
         writer.startSession(atSourceTime: CMTime.zero)
-
+        
         if !reader.startReading() {
             Log("Failed to start reading. Error:", reader.error?.localizedDescription)
             completionProxy(error: reader.error,
                             completionHandler: completionHandler)
             return
         }
-
+        
         let queue = DispatchQueue(label: "com.audiodesigndesk.ADD.FormatConverter.convertAsset")
-
+        
         // session.progress could be sent out via a delegate for this session
         writerInput.requestMediaDataWhenReady(on: queue, using: {
             var processing = true // safety flag to prevent runaway loops if errors
-
+            
             while writerInput.isReadyForMoreMediaData, processing {
                 if reader.status == .reading,
                    let buffer = readerOutput.copyNextSampleBuffer()
                 {
                     writerInput.append(buffer)
-
+                    
                 } else {
                     writerInput.markAsFinished()
-
+                    
                     switch reader.status {
                     case .failed:
                         Log("Conversion failed with error", reader.error)
